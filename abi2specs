@@ -1,12 +1,60 @@
 #!/usr/bin/env node
 const fs            = require("fs");
 const path          = require("path");
+const m2j           = require("md-2-json");
+const marked        = require("marked");
 const config_path   = process.argv[2];
-const filename      = path.basename(config_path, ".json");
-const config        = JSON.parse(fs.readFileSync(config_path));
-const abifile_name  = config.path;
-const global_vars   = config.vars;
-const global_stores = config.stores;
+const raw_md_config = fs.readFileSync(config_path).toString()
+const raw_config    = marked.lexer(raw_md_config)
+const config        = {}
+
+
+
+const tmp = raw_config
+  .reduce((a, b) => {
+    let r = a;
+    switch(b.type) {
+      case "heading":
+        let _path = a.path
+        if(_path.length >= b.depth) _path = _path.slice(0, b.depth -1)
+        _path.reduce((_o, i) => _o[i], a.o)[b.text] = {};
+        r = {
+          ...a,
+          path: _path.concat(b.text),
+          o: a.o
+        }
+        break;
+      case "code":
+        let e = a.path.reduce((_o, i) => _o[i], a.o);
+        e.data = (e.data || []).concat([b.text])
+        r = a
+        break;
+      default:
+        break;
+    }
+    return r;
+  }, {
+    path: [],
+    o: {}
+  })
+
+
+let toObject = (str, d = ":") => str
+  .split("\n")
+  .map(e => e.split(d))
+  .reduce((a, [k, v]) => { a[k.trim()] = v.trim(); return a; }, {})
+
+let toStorage = str => str.split("\n")
+
+let lvl1_config = tmp.o[Object.keys(tmp.o)[0]]
+const global_vars   = toObject(lvl1_config.defaults.vars.data[0]);
+const global_stores = toObject(lvl1_config.defaults.storage.data[0], "|->");
+
+
+
+
+const filename      = path.basename(config_path, ".md");
+const abifile_name  = "dss/out/Lad.abi"; // TODO
 
 const template      = fs.readFileSync("./template.ini")
   .toString();
@@ -30,9 +78,14 @@ const make_args = inputs => inputs.length == 0
     && ".TypedArgs"
     || inputs.map(make_abi_dsl).join(", ")
 
-let abit = Object.keys(config.methods)
+
+let abit = Object.keys(lvl1_config.methods)
   .map(name => ({
-    ...config.methods[name],
+    vars: lvl1_config.methods[name].vars && toObject(lvl1_config.methods[name].vars.data[0]) || {},
+    stores: lvl1_config.methods[name].storage && toObject(lvl1_config.methods[name].storage.data[0] , "|->") || [],
+    requires: lvl1_config.methods[name].requires && toStorage(lvl1_config.methods[name].requires.data[0]) || [],
+    returns: lvl1_config.methods[name].returns && lvl1_config.methods[name].returns.data[0] || "",
+    foreign_stores: lvl1_config.methods[name].foreign_stores,
     abi: name.indexOf("(") == -1
            ? abi.find(fabi => fabi.name == name)
            : abi.find(fabi => fabi.name + "(" + fabi.inputs.map(i => i.type).join(",") + ")" == name )
@@ -48,7 +101,6 @@ let abit = Object.keys(config.methods)
       ...global_stores,
       ...stores
     }
-
 
     const storage_success = "  " + Object.keys(local_stores)
       .map(key => key + " |-> (" + local_stores[key] + ")" )
@@ -73,6 +125,7 @@ let abit = Object.keys(config.methods)
       .concat(fabi_success)
       .join("\n  ")
 
+    console.log(local_stores);
     const storage_fail = "  " + Object.keys(local_stores)
       .map(key => key + " |-> " + (local_stores[key].indexOf("=>") > -1 ? "(" + local_stores[key].split("=>")[0] + "=> _)" : local_stores[key]) )
       .join("\n  ")
@@ -86,11 +139,13 @@ let abit = Object.keys(config.methods)
       .concat(fabi_fail)
       .join("\n  ")
 
+
     let accounts = Object.keys(foreign_stores || {})
       .map(name => {
         let code = fs.readFileSync("dss/out/" + name + ".bin-runtime")
-        let stores_ = Object.keys(foreign_stores[name])
-          .map(key => key + " |-> (" + foreign_stores[name][key] + ")" )
+        let fstore = toObject(foreign_stores[name].data[0], "|->");
+        let stores_ = Object.keys(fstore)
+          .map(key => key + " |-> (" + fstore[key] + ")" )
           .join("\n  ")
 
         return `<account>

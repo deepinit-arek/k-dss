@@ -1,22 +1,26 @@
 # Frob
 
-#### Vars
+## defaults
+
+  * path = dss/out/Lad.abi
+
+### vars
 
     Vat  : address
     Line : int256
     Live : int256
 
-#### Storage
+### storage
 
-    #Lad.vat  : Vat
-    #Lad.Line : Line
-    #Lad.live : Live
+    #Lad.vat  |-> Vat
+    #Lad.Line |-> Line
+    #Lad.live |-> Live
 
-## Method specifications
+## methods
 
 ### file(bytes32,bytes32,int256)
 
-#### Vars
+#### vars
 
     ABI_ilk  : bytes32
     ABI_what : bytes32
@@ -24,14 +28,14 @@
     Spot_i   : int256
     Line_i   : int256
 
-#### Storage
+#### storage
 
     #Lad.ilks(ABI_ilk, "spot") |-> #unsigned(Spot_i) => #if (ABI_what ==Int 52214633679529120849900229181229190823836184335472955378023737308807130251264) #then #unsigned(ABI_risk) #else #unsigned(Spot_i) #fi
     #Lad.ilks(ABI_ilk, "line") |-> #unsigned(Line_i) => #if (ABI_what ==Int 49036068503847260643156492622631591831542628249327578363867825373603329736704) #then #unsigned(ABI_risk) #else #unsigned(Line_i) #fi
 
 ### frob
 
-#### Vars
+#### vars
 
     ABI_ilk                       : bytes32
     ABI_dink                      : int256
@@ -53,13 +57,21 @@
     Dai +Int (Rate *Int ABI_dart) : int256
     Tab +Int (Rate *Int ABI_dart) : int256
 
-#### Storage
+#### storage
 
     #Lad.ilks(ABI_ilk, "line") |-> #unsigned(Line_i)
     #Lad.ilks(ABI_ilk, "spot") |-> #unsigned(Spot_i)
 
-#### foreign_storage(Vat)
+#### requires
 
+    Rate =/=Int 0
+    ((((Art +Int ABI_dart) *Int Rate) <=Int #wad2rad(Spot_i)) andBool (((Tab +Int (Rate *Int ABI_dart))) <Int #wad2rad(Line))) orBool (ABI_dart <=Int 0)
+    (((ABI_dart <=Int 0) andBool (ABI_dink >=Int 0)) orBool (((Ink +Int ABI_dink) *Int Spot_i) >=Int ((Art +Int ABI_dart) *Int Rate)))
+    Live ==Int 1
+
+#### foreign_stores
+
+##### Vat
 
     #Vat.urns(ABI_ilk, ABI_lad, "gem") |-> #unsigned(Gem) => #unsigned(Gem -Int ABI_dink)
     #Vat.urns(ABI_ilk, ABI_lad, "ink") |-> #unsigned(Ink) => #unsigned(Ink +Int ABI_dink)
@@ -70,9 +82,3 @@
     #Vat.Tab                           |-> #unsigned(Tab) => #unsigned(Tab +Int (Rate *Int ABI_dart))
 
 
-#### requires
-
-    notBool (Rate ==Int 0)
-    ((((Art +Int ABI_dart) *Int Rate) <=Int #wad2rad(Spot_i)) andBool (((Tab +Int (Rate *Int ABI_dart))) <Int #wad2rad(Line))) orBool (ABI_dart <=Int 0)
-    (((ABI_dart <=Int 0) andBool (ABI_dink >=Int 0)) orBool (((Ink +Int ABI_dink) *Int Spot_i) >=Int ((Art +Int ABI_dart) *Int Rate)))
-    Live ==Int 1
