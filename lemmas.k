@@ -135,3 +135,14 @@ rule (#signed (chop (#unsigned(A) +Int #unsigned(B)))) => A +Int B +Int pow256
 
 rule A modInt pow160 => A
   requires #rangeAddress(A)
+
+rule ACCTCODE in SetItem( 1 )
+                 SetItem ( 2 )
+                 SetItem ( 3 )
+                 SetItem ( 4 )
+                 SetItem ( 5 )
+                 SetItem ( 6 )
+                 SetItem ( 7 )
+                 SetItem ( 8 )
+                 => false
+     requires 10 <=Int ACCTCODE
