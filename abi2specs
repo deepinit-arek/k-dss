@@ -125,7 +125,6 @@ let abit = Object.keys(lvl1_config.methods)
       .concat(fabi_success)
       .join("\n  ")
 
-    console.log(local_stores);
     const storage_fail = "  " + Object.keys(local_stores)
       .map(key => key + " |-> " + (local_stores[key].indexOf("=>") > -1 ? "(" + local_stores[key].split("=>")[0] + "=> _)" : local_stores[key]) )
       .join("\n  ")
