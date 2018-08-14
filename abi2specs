@@ -11,6 +11,18 @@ const acts_str      = raw_config
                       .map(e => e.text)
 const config        = {}
 
+const template      = fs.readFileSync("./template.ini")
+  .toString();
+const render        = o => Object.keys(o)
+  .reduce((tmp, name) =>
+    tmp.replace(new RegExp("{{" + name + "}}", "g"), o[name]), template)
+
+const make_abi_dsl = ({type, name}, i) =>
+  "#" + type + "(ABI_" + name + ")"
+const make_args = inputs => inputs.length == 0
+    && ".TypedArgs"
+    || inputs.map(make_abi_dsl).join(", ")
+
 const bound = {
   "uint256": name => `#rangeUInt(256, ${ name })`,
   "int256" : name => `#rangeSInt(256, ${ name })`,
@@ -18,21 +30,29 @@ const bound = {
   "address": name => `#rangeAddress(${ name })`
 }
 const toK = str => str
-  .replace(" + ", " +Int ")
-  .replace(" - ", " -Int ")
-  .replace(" * ", " *Int ")
-  .replace(" / ", " /Int ")
-  .replace(" <= ", " <=Int ")
-  .replace(" >= ", " >=Int ")
-  .replace(" == ", " ==Int ")
-  .replace(" =/= ", " =/=Int ")
-  .replace(" and ", " andBool ")
-  .replace(" or ", " orBool ")
-  .replace(" not ", " notBool ")
+  .replace(/ \+ /g, " +Int ")
+  .replace(/ \- /g, " -Int ")
+  .replace(/ \* /g, " *Int ")
+  .replace(/ \/ /g, " /Int ")
+  .replace(/ \<\= /g, " <=Int ")
+  .replace(/ \>\= /g, " >=Int ")
+  .replace(/ \=\= /g, " ==Int ")
+  .replace(/ \=\/\= /g, " =/=Int ")
+  .replace(/ and /g, " andBool ")
+  .replace(/ or /g, " orBool ")
+  .replace(/ not /g, " notBool ")
 const unsignedWrap = (types, str) => str in types
   && types[str] == "int256"
   && "#unsigned(" + str + ")"
   || str
+const mapInterface = (is, str) => {
+  is.forEach(([t, n]) => {
+    str = str.replace(new RegExp(n + "([^\\w]|$)", "g"), (a, b, c) => {
+      return "ABI_" + n + b;
+    })
+  })
+  return str;
+}
 
 let acts = acts_str
   .map(e => {
@@ -56,26 +76,28 @@ let acts = acts_str
           a.name    = head.split(" ")[1]
           a.subject = head.split(" ")[3]
         } else if(/^interface/.test(head)) {
-          let interface_str = head
+          const interface_str = head
             .split(" ")
             .slice(1)
             .join(" ");
-          let interface  = interface_str
+          const interface  = interface_str
             .match(/\(([^\)]*)\)/)[1]
             .split(", ")
             .map(l => l.split(" "))
-          let _interface_types = interface
+          const _interface_types = interface
             .reduce((a, [v, k]) => {
               a[k] = v;
               return a;
             }, {})
-          a.signature = interface_str
-            .slice(0, interface_str.indexOf("(")) + "(" + interface
+          const fname = interface_str.slice(0, interface_str.indexOf("("))
+          a.callData = `#abiCallData("${fname}", ${make_args(interface.map(([type, name]) => ({type, name})))})`
+          a.signature = fname + "(" + interface
             .map(([t, v]) => t).join(",") + ")"
           a.types = {
             ...a.types,
             ..._interface_types
           }
+          a.interface = interface;
         } else if(/^types/.test(head)) {
           let _types = tail
             .map(l => l.trim())
@@ -92,7 +114,7 @@ let acts = acts_str
         } else if(/^storage/.test(head)) {
           let name = head.split(" ")[1] || "ACCT_ID";
           let _storage = tail
-            .map(l => l.trim())
+            .map(l => mapInterface(a.interface, l.trim()))
             .filter(l => l != "")
             .map(l => l.split("|->").map(i => toK(i).trim()))
             .map(([k, v]) => {
@@ -113,7 +135,7 @@ let acts = acts_str
           }
         } else if(/^iff/.test(head)) {
           let _iff = tail
-            .map(l => toK(l).trim())
+            .map(l => mapInterface(a.interface, toK(l).trim()))
             .filter(l => l != "")
           if(head.indexOf("in range") > -1) {
             let range = bound[head.split(" in range ")[1]]
@@ -121,14 +143,14 @@ let acts = acts_str
               .map(l => range(l))
           }
           a.iff = (a.iff || []).concat( _iff )
+        } else if(/^returns/.test(head)) {
+          a.returns = head.split(" ").slice(1).join(" ") + " : .wordStack"
         }
 
         return a;
       }, {})
     return act;
   })
-process.exit()
-
 
 
 // let toObject = (str, d = ":") => str
@@ -143,32 +165,122 @@ process.exit()
 // const global_stores = toObject(lvl1_config.defaults.storage.data[0], "|->");
 //
 
-acts
+let behaviours = acts
   .map(act => {
 
     const storage_success = "  " + Object.keys(act.storage.ACCT_ID || [])
       .map(key => key + " |-> (" + act.storage.ACCT_ID[key].join(" => ") + ")" )
-      .join("\n  ")
+      .join("\n  " + " ".repeat(14))
+    const cond_success = (act.iff || [])
+      .map(c => "  andBool " + c)
+      .join("\n")
 
+    const storage_fail = "  " + Object.keys(act.storage.ACCT_ID || [])
+      .map(key => key + " |-> (" + act.storage.ACCT_ID[key][0] + (act.storage.ACCT_ID[key].length > 1 ? " => _ " : "") + ")" )
+      .join("\n  " + " ".repeat(14))
+    const cond_fail = "notBool (\n" + (act.iff || [])
+      .map(c => "  andBool " + c)
+      .join("\n") + ")"
+
+    const accounts = Object.keys(act.storage || {})
+      .filter(name => name != "ACCT_ID")
+      .map(name => {
+        let code = fs.readFileSync("dss/out/" + name + ".bin-runtime") // TODO
+        let fstore = Object.keys(act.storage[name])
+          .map(key => key + " |-> (" + act.storage[name][key].join(" => ") + ")")
+          .join("\n" + " ".repeat(12))
+
+        return `<account>
+          <acctID> ${name} </acctID>
+          <balance> _ </balance>
+          <code> #parseByteStack("0x${code}") </code>
+          <storage>
+            ${fstore}
+          </storage>
+          <nonce> _ </nonce>
+        </account>
+        `
+      })
+      .join("\n")
+
+    const accounts_fail = Object.keys(act.storage || {})
+      .filter(name => name != "ACCT_ID")
+      .map(name => {
+        let code = fs.readFileSync("dss/out/" + name + ".bin-runtime") // TODO
+        let fstore = Object.keys(act.storage[name])
+          .map(key => key + " |-> (" + act.storage[name][key][0] + (act.storage[name][key].length > 1 ? " => _ " : "") + ")" )
+          .join("\n"+" ".repeat(12))
+
+        return `<account>
+          <acctID> ${name} </acctID>
+          <balance> _ </balance>
+          <code> #parseByteStack("0x${code}") </code>
+          <storage>
+            ${fstore}
+          </storage>
+          <nonce> _ </nonce>
+        </account>
+        `
+      })
+      .join("\n")
+
+    const activeaccounts = Object.keys(act.storage || {})
+      .filter(name => name !== "ACCT_ID")
+      .map(name => `SetItem(${name})`)
+      .join(" ")
+
+    const filename = act.subject + "_" + act.signature.replace(/\(|\)|\,/g, "_")
+
+    const cases = [{
+      name: "success_" + filename,
+      spec: render({
+        name: act.name,
+        callData: act.callData,
+        cond: cond_success,
+        storage: storage_success,
+        returns: act.returns || "_",
+        status: "EVMC_SUCCESS",
+        activeaccounts,
+        accounts
+      })
+    }];
+
+    if((act.iff || []).length > 0) {
+      cases.push({
+        name: "fail_" + filename,
+        spec: render({
+          name: act.name,
+          callData: act.callData,
+          cond: cond_fail,
+          storage: storage_fail,
+          returns: "_",
+          status: "EVMC_REVERT",
+          activeaccounts,
+          accounts: accounts_fail
+        })
+      })
+    }
+    return cases;
   })
+  .reduce((a, cs) => a.concat(cs), [])
+
+try {
+  fs.accessSync("out", fs.constants.F_OK);
+} catch (e) {
+  fs.mkdirSync("out");
+}
+
+behaviours
+  .forEach(({spec, name}) => {
+    fs.writeFileSync("out/" + name + ".ini", spec)
+  })
+
+process.exit();
 
 
 const filename      = path.basename(config_path, ".md");
 const abifile_name  = "dss/out/Lad.abi"; // TODO
 
-const template      = fs.readFileSync("./template.ini")
-  .toString();
-const render        = o => Object.keys(o)
-  .reduce((tmp, name) =>
-    tmp.replace(new RegExp("{{" + name + "}}", "g"), o[name]), template)
-
-const abi = JSON.parse(fs.readFileSync(abifile_name));
-
-const make_abi_dsl = ({type, name}, i) =>
-  "#" + type + "(ABI_" + name + ")"
-const make_args = inputs => inputs.length == 0
-    && ".TypedArgs"
-    || inputs.map(make_abi_dsl).join(", ")
 
 
 let abit = Object.keys(lvl1_config.methods)
