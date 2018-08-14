@@ -17,6 +17,6 @@
   },
   "homepage": "https://github.com/dapphub/k-dss#readme",
   "dependencies": {
-    "md-2-json": "^1.0.5"
+    "marked": "^0.4.0"
   }
 }
