@@ -3,10 +3,13 @@
   "prelude": "./exp.smt2",
   "lemmas": "./lemmas.k",
   "implements": [
+    "dss/out/frob.2.sol.json",
     "dss/out/tune.2.sol.json"
   ],
-  "behaviour_of": "Vat",
-  "var2name": {},
+  "behaviour_of": "Pit",
+  "var2name": {
+    "Vat": "Vat"
+  },
   "path_root": "dss",
   "host": "127.0.0.1:8080",
   "control": {
@@ -17,8 +20,8 @@
     "4"      : "branch 4",
     "5"      : "branch 5",
     "6"      : "branch 6",
-    "S-n"    : "next_k",
-    "S-p"    : "prev_k",
+    "N"    : "next_k",
+    "P"    : "prev_k",
     "n"      : "next_step",
     "p"      : "prev_step",
     "C-n"    : "next_branch",
