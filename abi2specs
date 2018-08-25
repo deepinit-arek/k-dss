@@ -220,8 +220,11 @@ let behaviours = acts
       .filter(name => name != "ACCT_ID")
       .map(name => {
         let code = "";
-        if(testPath("dss/out/" + name + ".bin-runtime")) {
-          let code = fs.readFileSync("dss/out/" + name + ".bin-runtime") // TODO
+        let klab_config = JSON.parse(fs.readFileSync("./config.json"));
+        let contract_name = klab_config.var2name[name]
+        console.log("Reading " + "dss/out/" + contract_name + ".bin-runtime")
+        if(testPath("dss/out/" + contract_name + ".bin-runtime")) {
+          let code = fs.readFileSync("dss/out/" + contract_name + ".bin-runtime") // TODO
         } else {
           console.log(clc.xterm(208)("WARN: no implementation provided for " + name));
         }
@@ -246,8 +249,11 @@ let behaviours = acts
       .filter(name => name != "ACCT_ID")
       .map(name => {
         let code = "";
-        if(testPath("dss/out/" + name + ".bin-runtime")) {
-          let code = fs.readFileSync("dss/out/" + name + ".bin-runtime") // TODO
+        let klab_config = JSON.parse(fs.readFileSync("./config.json"));
+        let contract_name = klab_config.var2name[name]
+        console.log("Reading " + "dss/out/" + contract_name + ".bin-runtime")
+        if(testPath("dss/out/" + contract_name + ".bin-runtime")) {
+          let code = fs.readFileSync("dss/out/" + contract_name + ".bin-runtime") // TODO
         } else {
           console.log(clc.xterm(208)("WARN: no implementation provided for " + name));
         }

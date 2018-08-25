@@ -3,10 +3,19 @@
   "prelude": "./prelude.smt2",
   "lemmas": "./lemmas.k",
   "implements": [
-    "./dss/out/tune.2.sol.json"
+    "./dss/out/tune.2.sol.json",
+    "./dss/out/heal.2.sol.json"
   ],
-  "behaviour_of": "Vat",
-  "var2name": {},
+  "behaviour_of": "Vow",
+  "var2name": {
+    "VatLike" : "Vat",
+    "PitLike" : "Pit",
+    "VowLike" : "Vow",
+    "Flippy" : "Flipper",
+    "Floppy" : "Flopper",
+    "Flappy" : "Flapper",
+    "GemLike" : "DSToken"
+  },
   "path_root": "./dss",
   "host": "127.0.0.1:8080",
   "control": {
