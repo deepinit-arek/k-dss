@@ -1,12 +1,12 @@
 {
-  "spec": "./out/spec_slip_success.ini",
+  "spec": "./out/Pit_frob_succ.ini",
   "prelude": "./prelude.smt2",
   "lemmas": "./lemmas.k",
   "implements": [
-    "./dss/out/tune.2.sol.json",
-    "./dss/out/heal.2.sol.json"
+    "./dss/out/frob.2.sol.json",
+    "./dss/out/tune.2.sol.json"
   ],
-  "behaviour_of": "Vat",
+  "behaviour_of": "Pit",
   "var2name": {
     "Vat" : "Vat",
     "Pit" : "Pit",

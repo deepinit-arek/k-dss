@@ -686,12 +686,12 @@ storage Vat
     #Vat.ilks(ilk).rate           |-> Rate
     #Vat.ilks(ilk).Art            |-> Art_i  => Art_i + dart
     #Vat.dai(CALLER_ID)           |-> Dai    => Dai + Rate * dart
-    #Vat.debt                     |-> Debt   => debt + Rate * dart
+    #Vat.debt                     |-> Debt   => Debt + Rate * dart
 
 iff
 
     Rate =/= 0
-    (((((Art_u + dart) * Rate) <= #wad2rad(Spot)) and (((debt + (Rate * dart))) < #wad2rad(Line))) or (dart <= 0))
+    (((((Art_u + dart) * Rate) <= #wad2rad(Spot)) and (((Debt + (Rate * dart))) < #wad2rad(Line))) or (dart <= 0))
     (((dart <= 0) and (dink >= 0)) or (((Ink_u + dink) * Spot) >= ((Art_u + dart) * Rate)))
     Live == 1
 
@@ -702,7 +702,7 @@ iff in range uint256
     Art_u + dart
     Art_i + dart
     Dai + (Rate * dart)
-    debt + (Rate * dart)
+    Debt + (Rate * dart)
     (Art_u + dart) * Rate
     (Ink_u + dink) * Spot
     #wad2rad(Spot)
