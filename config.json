@@ -4,16 +4,18 @@
   "lemmas": "./lemmas.k",
   "implements": [
     "./dss/out/frob.2.sol.json",
+    "./dss/out/drip.2.sol.json",
     "./dss/out/tune.2.sol.json"
   ],
   "behaviour_of": "Pit",
   "var2name": {
-    "Vat" : "Vat",
-    "Pit" : "Pit",
-    "Vow" : "Vow",
+    "Vat"  : "Vat2",
+    "Drip" : "Drip2",
+    "Pit"  : "Pit",
+    "Vow"  : "Vow",
     "Flip" : "Flipper",
-    "Row" : "Flopper",
-    "Cow" : "Flapper"
+    "Row"  : "Flopper",
+    "Cow"  : "Flapper"
   },
   "path_root": "./dss",
   "host": "127.0.0.1:8080",

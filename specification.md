@@ -660,6 +660,7 @@ types
     Live   : uint256
     Line   : uint256
     Vat    : address VatLike
+    Drip   : address Dripper
     Spot   : uint256
     Line_i : uint256
     Gem_u  : uint256
@@ -677,6 +678,7 @@ storage
     #Pit.vat            |-> Vat
     #Pit.ilks(ilk).line |-> Line_i
     #Pit.ilks(ilk).spot |-> Spot
+    #Pit.drip           |-> Drip
 
 storage Vat
 
@@ -687,6 +689,9 @@ storage Vat
     #Vat.ilks(ilk).Art            |-> Art_i  => Art_i + dart
     #Vat.dai(CALLER_ID)           |-> Dai    => Dai + Rate * dart
     #Vat.debt                     |-> Debt   => Debt + Rate * dart
+    
+storage Drip
+    2 |-> Vat
 
 iff
 
